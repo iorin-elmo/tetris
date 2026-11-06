@@ -12,6 +12,8 @@ export const attackSchema = z.object({
 export const rulesSchema = z.object({
   ruleVersion: z.literal('stacklane-project-1').default('stacklane-project-1'),
   maxPlayers: int(2,10).default(10), mode: z.enum(['ffa','team']).default('ffa'), teamCount: int(1,4).default(2),
+  teamNames: z.array(z.string().trim().min(1).max(16)).length(4).default(['LAVENDER','SKY','AMBER','LIME']),
+  teamColors: z.array(z.string().regex(/^#[0-9a-fA-F]{6}$/)).length(4).default(['#bca1f7','#68cee4','#f7b679','#c2f970']),
   maxPlayersPerTeam: int(1,6).default(6), fieldWidth: int(5,20).default(10), visibleHeight: int(16,30).default(20), hiddenHeight: int(4,30).default(20),
   nextCount: int(1,10).default(5), holdEnabled: z.boolean().default(true), forceGhost: z.boolean().default(false),
   gravityTicks: int(1,3600).default(60), softDropFactor: int(1,100).default(20), lockDelayTicks: int(0,600).default(30), lockResetLimit: int(0,100).default(15),
