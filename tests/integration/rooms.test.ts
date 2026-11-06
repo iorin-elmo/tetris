@@ -124,6 +124,28 @@ it('rejects untrusted origins', async () => {
     }),
   ).rejects.toThrow();
 });
+it('delivers the final result when a disconnected player resumes after the match ends', async () => {
+  const { app, url } = await setup(30000);
+  const a = await client(url),
+    b = await client(url);
+  a.send('room.create', { name: 'A' });
+  const { room } = await a.wait('room.snapshot');
+  b.send('room.join', { code: room.code, displayName: 'B' });
+  await b.wait('room.snapshot');
+  a.send('room.start');
+  await a.wait('match.start');
+  a.socket.close();
+  await b.wait('room.snapshot', (m) =>
+    m.room.members.some((p) => p.id === a.welcome.sessionId && !p.connected),
+  );
+  const match = app.service.rooms.get(room.code)!.match!;
+  match.players.find((p) => p.id === b.welcome.sessionId)!.state.alive = false;
+  await b.wait('match.end');
+  const resumed = await client(url, a.welcome.resumeToken);
+  await resumed.wait('match.start');
+  const result = await resumed.wait('match.end');
+  expect(result.placement.find((p) => p.id === a.welcome.sessionId)?.place).toBe(1);
+});
 it('starts ten players with fixed NEXT, refuses the eleventh, and freezes match rules', async () => {
   const { app, url } = await setup();
   const host = await client(url);

@@ -166,7 +166,18 @@ export class RoomService {
             this.publish(room);
             if (room.match && room.status === 'playing')
               this.send(socket, { type: 'match.start', ...room.match.frame(session.id) });
-            else if (room.match && room.status === 'countdown')
+            else if (room.match && room.status === 'results') {
+              const match = room.match;
+              this.send(socket, { type: 'match.start', ...match.frame(session.id) });
+              this.send(socket, {
+                type: 'match.end',
+                matchId: match.id,
+                reason: match.players.some((p) => p.state.alive) ? 'last_alive' : 'draw',
+                placement: match.standings(),
+                winningTeams: [...new Set(match.players.filter((p) => p.state.alive).map((p) => p.team))],
+                seedReveal: match.seeds,
+              });
+            } else if (room.match && room.status === 'countdown')
               this.send(socket, {
                 type: 'match.prepare',
                 matchId: room.match.id,

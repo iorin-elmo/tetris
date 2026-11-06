@@ -40,7 +40,7 @@ Chromiumで自分1盤面+他9盤面を表示し、自盤面幅が小盤面の2�
 
 systemd、Caddy、nginx代替、MyDNS HTTPS更新/30分タイマー、SQLite WAL、バックアップ、受理入力/シードのリプレイ検証、CI/Pagesを用意。
 
-- 型検査・本番ビルド成功。Vitest 52件成功。
+- 型検査・本番ビルド成功。Vitest 53件成功（切断中に試合が終了してから復帰するケースも確認）。
 - Chromiumの全E2E 10件成功。MyDNS更新は実通信を模擬したPythonテスト2件成功（実アカウントへの更新は行わない）。
 - Chromiumの通常対戦に加え、RTT 30/100/200ms・±5msの揺らぎ・一部snapshot欠落で対戦を維持し、双方の結果表示を確認。
 - Chrome・Firefox・Edgeで各4件（操作/HOLD/ポーズ、3連続終了→再試行、設定保存、CPU対戦）の計12件成功。
@@ -53,8 +53,8 @@ Windows x64 / Ryzen 7 5700G / Node 24.12。10人×3600tick（ゲーム内60秒�
 
 | 項目                                 |                 測定値 |
 | ------------------------------------ | ---------------------: |
-| 平均tick処理                         |                 0.73ms |
-| p95 / p99                            |          1.49 / 1.96ms |
+| 平均tick処理                         |                 0.76ms |
+| p95 / p99                            |          1.59 / 2.10ms |
 | 60Hzの1tick予算                      |                16.67ms |
 | RSS                                  |                約98MiB |
 | スナップショット生成量（10接続合計） | 約1453KiB / ゲーム内秒 |
@@ -62,6 +62,8 @@ Windows x64 / Ryzen 7 5700G / Node 24.12。10人×3600tick（ゲーム内60秒�
 `pnpm run benchmark` で再測定可能。各ラウンドで全員を動かし、脱落時に盤面を再初期化して無負荷tickで測定値を薄めない。ネットワーク/SQLite書込を含む実運用全体やラズパイ実機の保証値ではない。
 
 ### 未完了の実機受け入れ
+
+GitHub Actionsの初回[CI](https://github.com/iorin-elmo/tetris/actions/runs/42252664851)と[Pages公開](https://github.com/iorin-elmo/tetris/actions/runs/42252664996)は成功。公開URLでHTTP 200、ソロ・HOLD・CPU戦、JavaScript例外なしを実ブラウザで確認済み。
 
 - ラズパイのSSH接続先・機種/OSを確認して配備。
 - PiのネットワークからMyDNSの初回更新。A/AAAAと実際の公開先を確認。

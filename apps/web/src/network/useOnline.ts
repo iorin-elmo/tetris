@@ -226,6 +226,7 @@ export function useOnline(controller: Controller, prefs: Preferences) {
         } else if (!['NO_MATCH', 'STALE_MATCH', 'SPECTATOR'].includes(m.code))
           model.current.error = m.message;
       } else if (m.type === 'room.snapshot') {
+        if (m.room.status === 'lobby' && restart.current) model.current.game = null;
         model.current.room = m.room;
         localStorage.setItem(`stacklane.room:${url}`, m.room.code);
       } else if (m.type === 'match.prepare') {
@@ -374,9 +375,31 @@ export function useOnline(controller: Controller, prefs: Preferences) {
     const ping = setInterval(() => {
       if (socket.current?.readyState === WebSocket.OPEN) send('ping', { clientTime: Date.now() });
     }, 5000);
+    const release = () => {
+      const game = model.current.game;
+      controller.reset();
+      if (!game || game.result || game.spectator || !game.state.alive || model.current.status !== 'connected')
+        return;
+      timelineTick.current =
+        Math.max(
+          timelineTick.current,
+          Math.floor(((Date.now() + offset.current - game.startAt) * 60) / 1000),
+        ) + 1;
+      const frame = {
+        tick: timelineTick.current + game.rules.inputDelayTicks,
+        seq: nextSeq.current++,
+        input: {},
+      };
+      game.state = step(game.state, {}, game.selfRules).state;
+      inputs.current.push(frame);
+      outbound.current.push(frame);
+      flush();
+    };
+    window.addEventListener('blur', release);
     return () => {
       cancelAnimationFrame(raf);
       clearInterval(ping);
+      window.removeEventListener('blur', release);
     };
   }, [controller]);
   useEffect(() => {
