@@ -1,1 +1,5 @@
-{"name":"@stacklane/web","private":true,"type":"module"}
+{
+  "name": "@stacklane/web",
+  "private": true,
+  "type": "module"
+}

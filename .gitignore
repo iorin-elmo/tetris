@@ -3,7 +3,12 @@ dist/
 .env
 .env.*
 !.env.example
+*.env
+*.env.*
+!*.env.example
 data/
+backups/
+__pycache__/
 *.sqlite*
 *.log
 playwright-report/

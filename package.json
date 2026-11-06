@@ -1,18 +1,43 @@
 {
-  "name": "stacklane", "version": "0.1.0", "private": true, "type": "module",
-  "packageManager": "pnpm@12.8.1", "engines": { "node": ">=24.12.0" },
+  "name": "stacklane",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24.12.0"
+  },
   "scripts": {
-    "dev": "concurrently -k -n web,server \"pnpm dev:web\" \"pnpm dev:server\"",
+    "dev": "concurrently -k -n web,server \"pnpm run dev:web\" \"pnpm run dev:server\"",
     "dev:web": "vite --config apps/web/vite.config.ts --host 127.0.0.1",
     "dev:server": "tsx watch apps/server/src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "build": "pnpm typecheck && vite build --config apps/web/vite.config.ts && esbuild apps/server/src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=apps/server/dist/index.js",
+    "build": "pnpm run typecheck && vite build --config apps/web/vite.config.ts && esbuild apps/server/src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=apps/server/dist/index.js",
     "start": "node apps/server/dist/index.js",
     "benchmark": "tsx scripts/benchmark.ts",
-    "db:backup": "node scripts/backup.mjs"
+    "db:backup": "node scripts/backup.mjs",
+    "replay": "tsx scripts/replay.ts"
   },
-  "dependencies": { "react": "^19.3.1", "react-dom": "^19.3.1", "ws": "^8.18.3", "zod": "^4.6.7" },
-  "devDependencies": { "@playwright/test": "^1.65.0", "@types/node": "^24.10.0", "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "@types/ws": "^8.18.1", "concurrently": "^9.2.1", "esbuild": "^0.27.0", "tsx": "^4.20.6", "typescript": "^5.9.3", "vite": "^8.3.6", "vitest": "^5.1.0" }
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "ws": "^8.18.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
+    "esbuild": "^0.27.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
 }

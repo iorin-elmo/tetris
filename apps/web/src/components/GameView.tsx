@@ -1,26 +1,319 @@
-import {Board,MiniPiece} from '../canvas/Board';
-import {statistics,type GameState} from '../../../../packages/engine/src/index';
-import type {Rules} from '../../../../packages/rulesets/src/index';
-import type {Preferences} from '../settings/store';
-import type {GameResult} from '../game/useLocalGame';
-export const formatTime=(seconds:number)=>`${String(Math.floor(seconds/60)).padStart(2,'0')}:${(seconds%60).toFixed(2).padStart(5,'0')}`;
-export function GameView({state,rules,prefs,mode,opponents=[],paused=false,result,message,target,onTarget,onPause,onBack,onRetry,seed,online=false,spectator=false}:{state:GameState;rules:Rules;prefs:Preferences;mode:string;opponents?:{id:string;name:string;state:GameState;team:number;ko?:number;target?:string|null}[];paused?:boolean;result:GameResult|null;message:string;target:string|null;onTarget?:(id:string)=>void;onPause:()=>void;onBack:()=>void;onRetry:()=>void;seed?:number;online?:boolean;spectator?:boolean}){
-  const stats=statistics(state),goal=mode==='sprint'?40:mode==='marathon'&&!prefs.endless?150:0;
-  return <main className="game-page">
-    <div className="game-toolbar"><div><span className="eyebrow">{online?'ONLINE ROOM':'SOLO SESSION'}</span><h1>{mode==='sprint'?'40 LINES':mode==='marathon'?'MARATHON':mode==='cpu'?'CPU BATTLE':mode==='team'?'TEAM BATTLE':'FREE FOR ALL'}</h1></div><div className="toolbar-actions"><span className="tag"><i className="dot"/>{online?'LIVE':'LOCAL'}</span><button className="button secondary" onClick={onPause}>{online?'メニュー':'一時停止'} <kbd>ESC</kbd></button></div></div>
-    {spectator&&<p className="notice">観戦中です。次の試合から参加できます。</p>}
-    <div className={`play-layout ${opponents.length?'versus':''}`}>
-      <section className="player-stage" aria-label="自分のゲーム">
-        <aside className="hold-rail"><span className="rail-title">HOLD</span><div className={`piece-slot ${state.holdUsed?'used':''}`}><MiniPiece piece={state.hold}/></div><span className="key-hint">{prefs.keyboard.hold.replace('Key','')}</span><div className="rail-spacer"/><div className="rail-metric"><span>LEVEL</span><strong>{Math.floor(stats.linesCleared/10)+1}</strong></div><div className="rail-metric"><span>PPS</span><strong>{stats.pps.toFixed(2)}</strong></div></aside>
-        <div className="field-wrap"><div className="field-caption"><span><i className="dot"/> YOU</span><span>{rules.fieldWidth} × {rules.visibleHeight}</span></div><div className="field"><Board state={state} rules={rules} prefs={prefs}/><div className="garbage-gauge" title="受信待ちガベージ"><i style={{height:`${Math.min(100,state.garbage.reduce((n,p)=>n+p.lines,0)/rules.visibleHeight*100)}%`}}/></div></div><div className="field-bottom"><span>{message||'MAKE YOUR NEXT MOVE.'}</span><span>{stats.attackSent} ↑</span></div></div>
-        <aside className="next-rail"><span className="rail-title">NEXT <small>{rules.nextCount}</small></span><div className="next-list">{state.queue.slice(0,rules.nextCount).map((piece,i)=><MiniPiece key={i} piece={piece}/>)}</div></aside>
-      </section>
-      <aside className="match-sidebar"><div className="session-stats"><div><span>TIME</span><strong className="time-value">{formatTime(stats.elapsedActiveSeconds)}</strong></div><div><span>LINES</span><strong>{String(stats.linesCleared).padStart(3,'0')}<small>{goal?` / ${goal}`:''}</small></strong>{goal>0&&<div className="progress"><i style={{width:`${Math.min(100,stats.linesCleared/goal*100)}%`}}/></div>}</div><div><span>SCORE</span><strong>{Math.round(stats.score).toLocaleString()}</strong></div><div className="stat-pair"><div><span>APM</span><strong>{stats.apm.toFixed(1)}</strong></div><div><span>APP</span><strong>{stats.app.toFixed(2)}</strong></div></div></div>
-      {opponents.length>0?<><div className="opponents-heading"><span>PLAYERS</span><span>{opponents.filter(p=>p.state.alive).length+Number(state.alive)} ALIVE</span></div><div className={`opponents-grid ${opponents.length>3?'many':''}`}>{opponents.map((p,i)=><button className={`opponent ${target===p.id?'targeted':''} ${!p.state.alive?'knocked-out':''}`} key={p.id} onClick={()=>onTarget?.(p.id)} aria-label={`${p.name}をターゲットにする`} aria-pressed={target===p.id}><div className="opponent-name"><span><i style={{background:['#bca1f7','#68cee4','#f7b679','#c2f970'][p.team%4]}}/>{p.name}</span><span>{target===p.id?'◎':String(i+1).padStart(2,'0')}</span></div><Board state={p.state} rules={rules} prefs={prefs} small label={`${p.name}の盤面`}/><div className="opponent-footer">{p.state.alive?`${p.state.stats.linesCleared} LINES`:'KNOCKED OUT'}</div></button>)}</div></>:<div className="play-note"><span>ONE PIECE AT A TIME.</span><p>焦らず、自分のリズムで。<br/>次の一手を楽しもう。</p><div className="little-blocks"><i/><i/><i/><i/></div></div>}
-      </aside>
-    </div>
-    <div className="controls-bar"><span><kbd>←</kbd><kbd>→</kbd> 移動</span><span><kbd>↓</kbd> 落下</span><span><kbd>{prefs.keyboard.hard.replace('ArrowUp','↑')}</kbd> ドロップ</span><span><kbd>{prefs.keyboard.ccw.replace('Key','')}</kbd><kbd>{prefs.keyboard.cw.replace('Key','')}</kbd> 回転</span><span><kbd>{prefs.keyboard.hold.replace('Key','')}</kbd> HOLD</span><span className="controls-note">{online?'Q / E で照準切替':`SEED ${seed??'—'}`}</span></div>
-    {paused&&!result&&<div className="overlay"><div className="modal compact"><span className="eyebrow">TAKE A BREATH</span><h2>{online?'メニュー':'PAUSED'}</h2>{online&&<p>オンライン対戦はメニュー表示中も進行します。</p>}<button className="button primary wide" onClick={onPause}>ゲームに戻る →</button><button className="button secondary wide" onClick={onBack}>{online?'部屋から退出する':'ホームに戻る'}</button></div></div>}
-    {result&&<div className="overlay"><div className="modal results-modal"><span className="eyebrow">SESSION COMPLETE</span><h2>{result.title}</h2><div className="result-stats"><div><span>TIME</span><strong>{formatTime(stats.elapsedActiveSeconds)}</strong></div><div><span>LINES</span><strong>{stats.linesCleared}</strong></div><div><span>SCORE</span><strong>{Math.round(stats.score).toLocaleString()}</strong></div></div><div className="table-scroll"><table><thead><tr><th>順位 / PLAYER</th><th>KO</th><th>PPS</th><th>APM</th><th>APP</th><th>送信 / 相殺</th><th>生存秒</th></tr></thead><tbody>{result.standings.map(p=><tr key={p.id}><td><b>{p.place}</b> {p.name}</td><td>{p.ko}</td><td>{p.stats.pps.toFixed(2)}</td><td>{p.stats.apm.toFixed(1)}</td><td>{p.stats.app.toFixed(2)}</td><td>{p.stats.attackSent} / {p.stats.attackCancelled}</td><td>{p.stats.elapsedActiveSeconds.toFixed(1)}</td></tr>)}</tbody></table></div><div className="modal-actions"><button className="button secondary" onClick={onBack}>{online?'部屋から退出':'ホームへ'}</button><button className="button primary" onClick={onRetry}>{online?'ロビーへ戻る':'もう一度プレイ'} ↗</button></div></div></div>}
-  </main>;
+import { Board, MiniPiece } from '../canvas/Board';
+import { statistics, type GameState } from '../../../../packages/engine/src/index';
+import type { Rules } from '../../../../packages/rulesets/src/index';
+import type { Preferences } from '../settings/store';
+import type { GameResult } from '../game/useLocalGame';
+export const formatTime = (seconds: number) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;
+export function GameView({
+  state,
+  rules,
+  prefs,
+  mode,
+  opponents = [],
+  paused = false,
+  result,
+  message,
+  target,
+  onTarget,
+  onPause,
+  onBack,
+  onRetry,
+  seed,
+  online = false,
+  spectator = false,
+}: {
+  state: GameState;
+  rules: Rules;
+  prefs: Preferences;
+  mode: string;
+  opponents?: {
+    id: string;
+    name: string;
+    state: GameState;
+    team: number;
+    ko?: number;
+    target?: string | null;
+  }[];
+  paused?: boolean;
+  result: GameResult | null;
+  message: string;
+  target: string | null;
+  onTarget?: (id: string) => void;
+  onPause: () => void;
+  onBack: () => void;
+  onRetry: () => void;
+  seed?: number;
+  online?: boolean;
+  spectator?: boolean;
+}) {
+  const stats = statistics(state),
+    goal = mode === 'sprint' ? 40 : mode === 'marathon' && !prefs.endless ? 150 : 0;
+  return (
+    <main className="game-page">
+      <div className="game-toolbar">
+        <div>
+          <span className="eyebrow">{online ? 'ONLINE ROOM' : 'SOLO SESSION'}</span>
+          <h1>
+            {mode === 'sprint'
+              ? '40 LINES'
+              : mode === 'marathon'
+                ? 'MARATHON'
+                : mode === 'cpu'
+                  ? 'CPU BATTLE'
+                  : mode === 'team'
+                    ? 'TEAM BATTLE'
+                    : 'FREE FOR ALL'}
+          </h1>
+        </div>
+        <div className="toolbar-actions">
+          <span className="tag">
+            <i className="dot" />
+            {online ? 'LIVE' : 'LOCAL'}
+          </span>
+          <button className="button secondary" onClick={onPause}>
+            {online ? 'メニュー' : '一時停止'} <kbd>ESC</kbd>
+          </button>
+        </div>
+      </div>
+      {spectator && <p className="notice">観戦中です。次の試合から参加できます。</p>}
+      <div className={`play-layout ${opponents.length ? 'versus' : ''}`}>
+        <section className="player-stage" aria-label="自分のゲーム">
+          <aside className="hold-rail">
+            <span className="rail-title">HOLD</span>
+            <div className={`piece-slot ${state.holdUsed ? 'used' : ''}`}>
+              <MiniPiece piece={state.hold} />
+            </div>
+            <span className="key-hint">{prefs.keyboard.hold.replace('Key', '')}</span>
+            <div className="rail-spacer" />
+            <div className="rail-metric">
+              <span>LEVEL</span>
+              <strong>{Math.floor(stats.linesCleared / 10) + 1}</strong>
+            </div>
+            <div className="rail-metric">
+              <span>PPS</span>
+              <strong>{stats.pps.toFixed(2)}</strong>
+            </div>
+          </aside>
+          <div className="field-wrap">
+            <div className="field-caption">
+              <span>
+                <i className="dot" /> {spectator ? 'SPECTATING' : 'YOU'}
+              </span>
+              <span>
+                {rules.fieldWidth} × {rules.visibleHeight}
+              </span>
+            </div>
+            <div className="field">
+              <Board state={state} rules={rules} prefs={prefs} />
+              <div className="garbage-gauge" title="受信待ちガベージ">
+                <i
+                  style={{
+                    height: `${Math.min(100, (state.garbage.reduce((n, p) => n + p.lines, 0) / rules.visibleHeight) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="field-bottom">
+              <span>{message || 'MAKE YOUR NEXT MOVE.'}</span>
+              <span>{stats.attackSent} ↑</span>
+            </div>
+          </div>
+          <aside className="next-rail">
+            <span className="rail-title">
+              NEXT <small>{rules.nextCount}</small>
+            </span>
+            <div className="next-list">
+              {state.queue.slice(0, rules.nextCount).map((piece, i) => (
+                <MiniPiece key={i} piece={piece} />
+              ))}
+            </div>
+          </aside>
+        </section>
+        <aside className="match-sidebar">
+          <div className="session-stats">
+            <div>
+              <span>TIME</span>
+              <strong className="time-value">{formatTime(stats.elapsedActiveSeconds)}</strong>
+            </div>
+            <div>
+              <span>LINES</span>
+              <strong>
+                {String(stats.linesCleared).padStart(3, '0')}
+                <small>{goal ? ` / ${goal}` : ''}</small>
+              </strong>
+              {goal > 0 && (
+                <div className="progress">
+                  <i style={{ width: `${Math.min(100, (stats.linesCleared / goal) * 100)}%` }} />
+                </div>
+              )}
+            </div>
+            <div>
+              <span>SCORE</span>
+              <strong>{Math.round(stats.score).toLocaleString()}</strong>
+            </div>
+            <div className="stat-pair">
+              <div>
+                <span>APM</span>
+                <strong>{stats.apm.toFixed(1)}</strong>
+              </div>
+              <div>
+                <span>APP</span>
+                <strong>{stats.app.toFixed(2)}</strong>
+              </div>
+            </div>
+          </div>
+          {opponents.length > 0 ? (
+            <>
+              <div className="opponents-heading">
+                <span>PLAYERS</span>
+                <span>{opponents.filter((p) => p.state.alive).length + Number(state.alive)} ALIVE</span>
+              </div>
+              <div className={`opponents-grid ${opponents.length > 3 ? 'many' : ''}`}>
+                {opponents.map((p, i) => (
+                  <button
+                    className={`opponent ${target === p.id ? 'targeted' : ''} ${!p.state.alive ? 'knocked-out' : ''}`}
+                    key={p.id}
+                    onClick={() => onTarget?.(p.id)}
+                    aria-label={`${p.name}をターゲットにする`}
+                    aria-pressed={target === p.id}
+                  >
+                    <div className="opponent-name">
+                      <span>
+                        <i style={{ background: rules.teamColors[p.team % 4] }} />
+                        {p.name}
+                      </span>
+                      <span>{target === p.id ? '◎' : String(i + 1).padStart(2, '0')}</span>
+                    </div>
+                    <Board state={p.state} rules={rules} prefs={prefs} small label={`${p.name}の盤面`} />
+                    <div className="opponent-footer">
+                      {p.state.alive ? `${p.state.stats.linesCleared} LINES` : 'KNOCKED OUT'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="play-note">
+              <span>ONE PIECE AT A TIME.</span>
+              <p>
+                焦らず、自分のリズムで。
+                <br />
+                次の一手を楽しもう。
+              </p>
+              <div className="little-blocks">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+      <div className="controls-bar">
+        <span>
+          <kbd>←</kbd>
+          <kbd>→</kbd> 移動
+        </span>
+        <span>
+          <kbd>↓</kbd> 落下
+        </span>
+        <span>
+          <kbd>{prefs.keyboard.hard.replace('ArrowUp', '↑')}</kbd> ドロップ
+        </span>
+        <span>
+          <kbd>{prefs.keyboard.ccw.replace('Key', '')}</kbd>
+          <kbd>{prefs.keyboard.cw.replace('Key', '')}</kbd> 回転
+        </span>
+        <span>
+          <kbd>{prefs.keyboard.hold.replace('Key', '')}</kbd> HOLD
+        </span>
+        <span className="controls-note">{online ? 'Q / E で照準切替' : `SEED ${seed ?? '—'}`}</span>
+      </div>
+      {paused && !result && (
+        <div className="overlay">
+          <div className="modal compact">
+            <span className="eyebrow">TAKE A BREATH</span>
+            <h2>{online ? 'メニュー' : 'PAUSED'}</h2>
+            {online && <p>オンライン対戦はメニュー表示中も進行します。</p>}
+            <button className="button primary wide" onClick={onPause}>
+              ゲームに戻る →
+            </button>
+            <button className="button secondary wide" onClick={onBack}>
+              {online ? '部屋から退出する' : 'ホームに戻る'}
+            </button>
+          </div>
+        </div>
+      )}
+      {result && (
+        <div className="overlay">
+          <div className="modal results-modal">
+            <span className="eyebrow">SESSION COMPLETE</span>
+            <h2>{result.title}</h2>
+            <div className="result-stats">
+              <div>
+                <span>TIME</span>
+                <strong>{formatTime(stats.elapsedActiveSeconds)}</strong>
+              </div>
+              <div>
+                <span>LINES</span>
+                <strong>{stats.linesCleared}</strong>
+              </div>
+              <div>
+                <span>SCORE</span>
+                <strong>{Math.round(stats.score).toLocaleString()}</strong>
+              </div>
+            </div>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>順位 / PLAYER</th>
+                    {rules.mode === 'team' && <th>チーム順位</th>}
+                    <th>KO</th>
+                    <th>PPS</th>
+                    <th>APM</th>
+                    <th>APP</th>
+                    <th>送信 / 相殺</th>
+                    <th>生存秒</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.standings.map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        <b>{p.place}</b> {p.name}
+                      </td>
+                      {rules.mode === 'team' && (
+                        <td>
+                          {rules.teamNames[p.team]} #{p.teamPlace ?? '—'}
+                        </td>
+                      )}
+                      <td>{p.ko}</td>
+                      <td>{p.stats.pps.toFixed(2)}</td>
+                      <td>{p.stats.apm.toFixed(1)}</td>
+                      <td>{p.stats.app.toFixed(2)}</td>
+                      <td>
+                        {p.stats.attackSent} / {p.stats.attackCancelled}
+                      </td>
+                      <td>{p.stats.elapsedActiveSeconds.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="modal-actions">
+              <button className="button secondary" onClick={onBack}>
+                {online ? '部屋から退出' : 'ホームへ'}
+              </button>
+              <button className="button primary" onClick={onRetry}>
+                {online ? 'ロビーへ戻る' : 'もう一度プレイ'} ↗
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
 }
