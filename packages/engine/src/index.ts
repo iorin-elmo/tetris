@@ -10,7 +10,7 @@ export interface Stats { placements: number; linesCleared: number; attackGenerat
 export interface GameState {
   board: number[]; active: Active | null; queue: Piece[]; rng: number; hold: Piece | null; holdUsed: boolean;
   tick: number; alive: boolean; gravity: number; grounded: number; resets: number; delay: number;
-  lastRotation: { kick: number } | null; streak: number; b2b: boolean; garbage: GarbagePacket[]; stats: Stats;
+  lastRotation: { kick: number } | null; lastGarbageSource: string|null; streak: number; b2b: boolean; garbage: GarbagePacket[]; stats: Stats;
   horizontal: { direction: number; held: number; repeat: number; left: boolean; right: boolean };
 }
 export interface LockEvent { type: 'lock'; piece: Piece; lines: number; spin: Spin; perfectClear: boolean; ren: number; b2b: boolean; generated: number; attack: number; cancelled: number; inserted: number }
@@ -37,7 +37,7 @@ function spawn(s: GameState, r: Rules, kind?: Piece) {
 }
 export function createGame(seed: number, r: Rules = PROJECT_DEFAULT): GameState {
   const s: GameState = { board: Array(r.fieldWidth*(r.visibleHeight+r.hiddenHeight)).fill(0), active: null, queue: [], rng: seed >>> 0,
-    hold: null, holdUsed: false, tick: 0, alive: true, gravity: 0, grounded: 0, resets: 0, delay: 0, lastRotation: null, streak: 0, b2b: false, garbage: [],
+    hold: null, holdUsed: false, tick: 0, alive: true, gravity: 0, grounded: 0, resets: 0, delay: 0, lastRotation: null, lastGarbageSource: null, streak: 0, b2b: false, garbage: [],
     horizontal: { direction: 0, held: 0, repeat: 0, left: false, right: false },
     stats: { placements: 0, linesCleared: 0, attackGenerated: 0, attackSent: 0, attackCancelled: 0, receivedGarbage: 0, score: 0 } };
   spawn(s,r); return s;
@@ -100,6 +100,7 @@ function lock(s: GameState, r: Rules, events: GameEvent[]) {
       if (p.arrivalTick + (r.garbageStyle === 'tetrio' ? r.garbageActivationTicks : 0) > s.tick) continue;
       p.status = 'active';
       const n = Math.min(p.lines,r.garbageCapPerLock-inserted);
+      if (n > 0) s.lastGarbageSource = p.sourceId;
       for (let i = 0; i < n; i++) {
         if (s.board.slice(0,r.fieldWidth).some(Boolean)) overflow = true;
         s.board.splice(0,r.fieldWidth);
