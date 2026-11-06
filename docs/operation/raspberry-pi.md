@@ -8,6 +8,12 @@
 
 別アプリが既存のNodeを使用している場合は、テトリス専用のNode 24を `/opt/stacklane-runtime/node-v24.12.0-linux-arm64/` などに配置できます。その場合は `/etc/systemd/system/stacklane.service.d/runtime.conf` で `[Service]` の `Environment=PATH=/opt/stacklane-runtime/node-v24.12.0-linux-arm64/bin:/usr/local/bin:/usr/bin:/bin` を設定します。
 
+この専用Node構成では、ビルド・更新・ベンチマークを行うシェルにも、その作業中だけ次を設定します。
+
+```sh
+export PATH=/opt/stacklane-runtime/node-v24.12.0-linux-arm64/bin:$PATH
+```
+
 OSでパッケージが提供されている場合の補助ツール導入例:
 
 ```sh
