@@ -1,0 +1,28 @@
+[Unit]
+Description=Stacklane authoritative puzzle server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=stacklane
+Group=stacklane
+WorkingDirectory=/opt/stacklane
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/etc/stacklane/server.env
+ExecStart=/usr/bin/env node apps/server/dist/index.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+StateDirectory=stacklane
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/stacklane
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

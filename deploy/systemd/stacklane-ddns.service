@@ -1,0 +1,14 @@
+[Unit]
+Description=Update Stacklane MyDNS address
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=stacklane
+EnvironmentFile=/etc/stacklane/mydns.env
+ExecStart=/usr/bin/python3 /opt/stacklane/deploy/mydns/update.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict

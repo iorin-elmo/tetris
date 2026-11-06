@@ -1,0 +1,13 @@
+tetris.server-on.net {
+    @game path /ws /health
+    handle @game {
+        reverse_proxy 127.0.0.1:3001
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    handle {
+        respond "Stacklane game server" 404
+    }
+}

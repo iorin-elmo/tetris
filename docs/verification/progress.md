@@ -41,6 +41,7 @@ Chromiumで自分1盤面+他9盤面を表示し、自盤面幅が小盤面の2�
 systemd、Caddy、nginx代替、MyDNS HTTPS更新/30分タイマー、SQLite WAL、バックアップ、受理入力/シードのリプレイ検証、CI/Pagesを用意。
 
 - 型検査・本番ビルド成功。Vitest 52件成功。
+- Chromiumの全E2E 10件成功。MyDNS更新は実通信を模擬したPythonテスト2件成功（実アカウントへの更新は行わない）。
 - Chromiumの通常対戦に加え、RTT 30/100/200ms・±5msの揺らぎ・一部snapshot欠落で対戦を維持し、双方の結果表示を確認。
 - Chrome・Firefox・Edgeで各4件（操作/HOLD/ポーズ、3連続終了→再試行、設定保存、CPU対戦）の計12件成功。
 - 稼働中SQLiteのオンラインバックアップ成功。別のコピーを開きintegrity_check=ok、保存済み7試合の読取を確認。元DBもintegrity_check=ok。
