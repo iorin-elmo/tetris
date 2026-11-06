@@ -155,7 +155,7 @@ curl --fail http://127.0.0.1:3001/health
 ```sh
 pnpm run benchmark
 sudo -u stacklane env DATABASE_PATH=/var/lib/stacklane/stacklane.sqlite \
-  /opt/stacklane/node_modules/.bin/tsx /opt/stacklane/scripts/replay.ts <match-id>
+  /opt/stacklane-runtime/node-v24.12.0-linux-arm64/bin/node /opt/stacklane/apps/server/dist/replay.js <match-id>
 ```
 
 実機でCPU・メモリ・通信量と操作感を確認します。PCの測定をPiの保証値にはしません。

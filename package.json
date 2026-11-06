@@ -14,11 +14,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "build": "pnpm run typecheck && vite build --config apps/web/vite.config.ts && esbuild apps/server/src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=apps/server/dist/index.js",
+    "build": "pnpm run typecheck && vite build --config apps/web/vite.config.ts && esbuild apps/server/src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=apps/server/dist/index.js && esbuild scripts/replay.ts --bundle --platform=node --format=esm --packages=external --outfile=apps/server/dist/replay.js",
     "start": "node apps/server/dist/index.js",
     "benchmark": "tsx scripts/benchmark.ts",
     "db:backup": "node scripts/backup.mjs",
-    "replay": "tsx scripts/replay.ts"
+    "replay": "node apps/server/dist/replay.js"
   },
   "dependencies": {
     "react": "^19.3.1",

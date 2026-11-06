@@ -51,7 +51,7 @@ pnpm run build
 pnpm start
 ```
 
-ビルド出力は `apps/web/dist/` と `apps/server/dist/index.js` です。本番設定は [config/server.env.example](config/server.env.example) を参照。開発時のサーバー環境変数はシェル、本番はsystemdのEnvironmentFileで設定します。
+ビルド出力は `apps/web/dist/`、`apps/server/dist/index.js`、リプレイ検証用の `apps/server/dist/replay.js` です。本番設定は [config/server.env.example](config/server.env.example) を参照。開発時のサーバー環境変数はシェル、本番はsystemdのEnvironmentFileで設定します。
 
 ## GitHub Pagesとラズパイ
 
@@ -90,7 +90,7 @@ pnpm run db:backup backups/stacklane.sqlite
 pnpm run replay <match-id>
 ```
 
-リプレイはDBの初期シード・受理入力・照準・切断/退出から再計算し、保存した最終統計を照合します。DBとバックアップはGit管理しません。
+リプレイはDBの初期シード・受理入力・照準・切断/退出から再計算し、保存した最終統計を照合します。`pnpm run build` で本番用コマンドを生成するため、実行時にtsxやesbuildの実行権限は不要です。DBとバックアップはGit管理しません。
 
 ## 参照仕様と未確認事項
 
