@@ -6,6 +6,7 @@ import {useLocalGame,type SoloMode} from '../game/useLocalGame';
 import {GameView,formatTime} from '../components/GameView';
 import {loadPreferences,bests,savePreferences} from '../settings/store';
 import {unlockAudio} from '../game/audio';
+import {Settings} from '../settings/Settings';
 export function App(){
   const [prefs,setPrefs]=useState(loadPreferences),[settings,setSettings]=useState(false),[onlineOpen,setOnlineOpen]=useState(new URLSearchParams(location.search).has('room'));
   const controller=useMemo(()=>new Controller(prefs),[]);controller.prefs=prefs;controller.blocked=settings;
@@ -20,7 +21,7 @@ export function App(){
   <section className="online-banner"><div className="online-icon">↗<span>↙</span></div><div><span className="eyebrow">BETTER TOGETHER / 2–10 PLAYERS</span><h2>次は、みんなで。</h2><p>招待コードで集まろう。フリー対戦も、チーム戦も。</p></div><button className="button primary" onClick={()=>setOnlineOpen(true)}>オンラインで遊ぶ ↗</button></section>
   {bests().length>0&&<section className="records"><span className="eyebrow">YOUR PERSONAL BEST</span><div>{(['sprint','marathon'] as const).map(mode=>{const b=bests().find(b=>b.mode===mode);return b&&<p key={mode}><span>{mode==='sprint'?'40 LINES':'MARATHON'}</span><strong>{mode==='sprint'?formatTime(b.time):Math.round(b.score).toLocaleString()}</strong><small>{b.lines} LINES</small></p>;})}</div></section>}
   <footer className="site-footer"><span>STACKLANE <i>© 2026</i></span><span>NO DOWNLOAD. JUST ONE MORE GAME.</span><span>MADE FOR YOUR NEXT BREAK.</span></footer></main>}
-  {settings&&<div className="overlay"><div className="modal compact"><h2>プレイ設定</h2><label>DAS (ms)<input type="number" min="0" max="500" value={prefs.dasMs} onChange={e=>setPrefs({...prefs,dasMs:Math.min(500,Math.max(0,+e.target.value))})}/></label><label>ARR (ms)<input type="number" min="0" max="200" value={prefs.arrMs} onChange={e=>setPrefs({...prefs,arrMs:Math.min(200,Math.max(0,+e.target.value))})}/></label><button className="button primary wide" onClick={()=>setSettings(false)}>保存して閉じる</button></div></div>}
+  {settings&&<Settings prefs={prefs} onChange={setPrefs} onClose={()=>setSettings(false)}/>}
   {onlineOpen&&<div className="overlay"><div className="modal compact"><h2>オンライン対戦</h2><p>対戦サーバーの機能を準備しています。</p><button className="button secondary wide" onClick={()=>setOnlineOpen(false)}>閉じる</button></div></div>}
   </div>;
 }

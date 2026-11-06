@@ -6,7 +6,7 @@ export class Controller {
   padName='ゲームパッド未接続'; padButtons:string[]=[];
   constructor(prefs:Preferences){this.prefs=prefs;}
   private down=(event:KeyboardEvent)=>{
-    if(this.blocked || event.target instanceof HTMLElement && /INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)) return;
+    if(this.blocked || event.target instanceof HTMLElement && /INPUT|SELECT|TEXTAREA/.test(event.target.tagName)) return;
     if(Object.values(this.prefs.keyboard).includes(event.code))event.preventDefault();
     if(!this.keys.has(event.code)) for(const a of actionNames) if(this.prefs.keyboard[a]===event.code&&!continuous.includes(a))this.edges.add(a);
     this.keys.add(event.code);
