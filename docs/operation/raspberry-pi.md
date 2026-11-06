@@ -159,3 +159,5 @@ sudo -u stacklane env DATABASE_PATH=/var/lib/stacklane/stacklane.sqlite \
 ```
 
 実機でCPU・メモリ・通信量と操作感を確認します。PCの測定をPiの保証値にはしません。
+
+公開先の外部接続を確認する場合は、GitHub Actionsの「公開サーバー接続確認」を手動実行します。CLIでは `node scripts/public-smoke.mjs` でも確認できます。公開先に10人分のテスト接続と部屋を作成し、検証後は退出します。

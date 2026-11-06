@@ -12,7 +12,7 @@
 - **オンラインFFA**：招待コード・URLで2〜10人。最後の1人が勝利。
 - **チーム戦**：最大4チーム、1チーム最大6人。人数差・空チームを許容し、最後の生存チームが勝利。
 
-オンラインは `wss://tetris.server-on.net/ws` のサーバー起動後に利用できます。ソロ・CPU戦はサーバーがなくても遊べます。スマホはロビー・観戦を優先し、タッチ対戦は対象外です。
+オンライン対戦サーバーはRaspberry Pi 5の `wss://tetris.server-on.net/ws` で稼働中です。公開ページから部屋を作成・招待して対戦できます。ソロ・CPU戦はサーバーがなくても遊べます。スマホはロビー・観戦を優先し、タッチ対戦は対象外です。
 
 ## 操作
 
@@ -64,6 +64,8 @@ Browser → WSS → tetris.server-on.net:443 → Caddy → 127.0.0.1:3001
 ```
 
 Docker不要です。[配備手順](docs/operation/raspberry-pi.md) にsystemd、MyDNS、TLS、ルーター、バックアップ/復元、更新/ロールバックを記載しています。MyDNS認証情報はラズパイの `/etc/stacklane/mydns.env` にだけ置きます。公開用の `VITE_` 変数には秘密を入れません。
+
+公開状態は [ヘルスチェック](https://tetris.server-on.net/health) または手動のGitHub Actions「公開サーバー接続確認」で検証できます。後者は外部回線からHTTPS・WSS・10人参加・Origin制限を確認し、作成したテスト部屋から退出します。
 
 ## 構成
 

@@ -81,13 +81,17 @@ Raspberry Pi 5 Model B / 8GB / Debian 13 trixie / aarch64 / Cortex-A76 / Node 24
 
 このベンチマークは計算・JSON生成の測定であり、SQLiteやインターネットWSSを含む実運用全体の性能保証ではない。ブラウザE2EはPCクライアント・PiバックエンドのLAN/SSH構成で、公開WSSの確認とは区別する。
 
-### 未完了の実機受け入れ
+### 公開運用の確認
 
 GitHub Actionsの初回[CI](https://github.com/iorin-elmo/tetris/actions/runs/42252664851)と[Pages公開](https://github.com/iorin-elmo/tetris/actions/runs/42252664996)は成功。公開URLでHTTP 200、ソロ・HOLD・CPU戦、JavaScript例外なしを実ブラウザで確認済み。
 
-- systemdへの永続サービス登録と既存Caddyへの反映（sudo認証が必要）。
-- ルーター80/443、Caddy証明書、Pages→公開WSSで2人/10人対戦を確認。
-- WSSとSQLiteを含む実運用時の負荷・操作感、物理パッドを確認。
-- 原作実機のMini/0-line/PC/B2B/REN例外、ガベージ穴・遅延、正式操作設定との照合。
+- `stacklane.service` を専用ユーザーで稼働させ、自動起動を有効化。Node 24は `/opt/stacklane-runtime/` に配置し、既存アプリ用Node 22は変更しない構成。確認時はactive/running、再起動回数0。
+- 既存2サイトを保持してCaddyへ追加。`https://tetris.server-on.net/health` が証明書検証を通ってHTTP 200、バックエンドはloopback:3001のみで待受。
+- MyDNSの初回通知成功、30分間隔のsystemdタイマーを有効化。認証情報はroot所有600のEnvironmentFileへ格納し、ユーザーディレクトリの一時コピーを削除。
+- 実際の公開PagesからWSSで、2ブラウザの部屋作成/招待/対戦/ページ再読込復帰/結果/再戦を確認。
+- 公開Pagesと8つの追加WSSクライアントで、10人・4チーム定義・6対4（2チームは空）を開始し、NEXT 5固定、個人/チーム結果10人分を確認。JavaScript例外なし。
+- [外部回線確認ワークフロー](https://github.com/iorin-elmo/tetris/actions/runs/42261235592) が成功。GitHub側の外部ランナーからHTTPS、WSS、10人FFA開始、非公開状態の除外、不許可Originの403を確認。
+- 本番DBのオンラインバックアップを専用ユーザーで実行し、コピーのintegrity_check=okを確認。公開WSSで保存した10人試合をリプレイし、最終統計との照合が成功。
+- リプレイCLIを本番JSとしてビルドし、実行時に開発用のtsx/esbuildが不要な構成で専用ユーザーの動作を確認。
 
-Phase 6の公開WSS・実機条件は上記が完了するまで合格扱いにしない。
+Phase 6の公開WSSによる基本受け入れは完了。長時間運用時の負荷・実物パッドの操作感、原作実機のMini/0-line/PC/B2B/REN例外・ガベージ穴/遅延・正式操作設定との照合は継続確認項目とする。実機全体の再起動試験は行わず、systemdのenabled設定を確認している。
