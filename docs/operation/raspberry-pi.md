@@ -6,6 +6,8 @@
 
 64-bit Raspberry Pi OS、Node.js 24.12以降、pnpm 12.8.1、Git、Python 3、Caddyを準備します。Nodeはsystemdから使える `/usr/local/bin` または `/usr/bin` に置きます。ホーム内だけのNodeはProtectHome設定で利用できません。[Node公式配布](https://nodejs.org/en/download) と [Caddy公式導入](https://caddyserver.com/docs/install) を参照。
 
+別アプリが既存のNodeを使用している場合は、テトリス専用のNode 24を `/opt/stacklane-runtime/node-v24.12.0-linux-arm64/` などに配置できます。その場合は `/etc/systemd/system/stacklane.service.d/runtime.conf` で `[Service]` の `Environment=PATH=/opt/stacklane-runtime/node-v24.12.0-linux-arm64/bin:/usr/local/bin:/usr/bin:/bin` を設定します。
+
 OSでパッケージが提供されている場合の補助ツール導入例:
 
 ```sh

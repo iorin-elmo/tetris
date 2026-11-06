@@ -59,7 +59,7 @@ console.log(
       rssMiB: process.memoryUsage().rss / 1024 ** 2,
       snapshotKiBPerSimulatedSecond: bytes / 1024 / (ticks / 60),
       restarts,
-      note: 'PC/engine+10Hz JSON serialization measurement. Not a Raspberry Pi or WAN measurement.',
+      note: 'Synthetic engine+10Hz JSON serialization measurement on the reported hardware; excludes SQLite writes and live WebSocket/WAN traffic.',
     },
     null,
     2,

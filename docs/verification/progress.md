@@ -61,14 +61,33 @@ Windows x64 / Ryzen 7 5700G / Node 24.12。10人×3600tick（ゲーム内60秒�
 
 `pnpm run benchmark` で再測定可能。各ラウンドで全員を動かし、脱落時に盤面を再初期化して無負荷tickで測定値を薄めない。ネットワーク/SQLite書込を含む実運用全体やラズパイ実機の保証値ではない。
 
+### Raspberry Pi 5での実機確認
+
+Raspberry Pi 5 Model B / 8GB / Debian 13 trixie / aarch64 / Cortex-A76 / Node 24.12で確認。既存アプリ用のシステムNode 22は変更せず、テトリス専用のNode 24を別に配置した。
+
+- 型検査・本番ビルド・Vitest 53件が実機で成功。
+- PCのブラウザからSSH転送を通してPi上の実サーバーへ接続し、2ブラウザ対戦/復帰/再戦、10人表示、RTT 30/100/200ms・揺らぎ・snapshot欠落を含むE2E 6件が成功。
+- MyDNSのIPv4通知が成功し、`tetris.server-on.net` のAレコード解決を確認。
+- 既存の2サイトを保持してテトリスを追加したCaddy設定候補を作成し、Pi上のCaddy 2.6.2でvalidate成功。公開設定への反映はまだ行っていない。
+
+同じ10人×3600tick・10Hz JSON生成ベンチマークの実機測定:
+
+| 項目                                 |           Pi 5の測定値 |
+| ------------------------------------ | ---------------------: |
+| 平均tick処理                         |                 1.12ms |
+| p95 / p99                            |          2.20 / 2.43ms |
+| RSS                                  |             約104.6MiB |
+| スナップショット生成量（10接続合計） | 約1453KiB / ゲーム内秒 |
+
+このベンチマークは計算・JSON生成の測定であり、SQLiteやインターネットWSSを含む実運用全体の性能保証ではない。ブラウザE2EはPCクライアント・PiバックエンドのLAN/SSH構成で、公開WSSの確認とは区別する。
+
 ### 未完了の実機受け入れ
 
 GitHub Actionsの初回[CI](https://github.com/iorin-elmo/tetris/actions/runs/42252664851)と[Pages公開](https://github.com/iorin-elmo/tetris/actions/runs/42252664996)は成功。公開URLでHTTP 200、ソロ・HOLD・CPU戦、JavaScript例外なしを実ブラウザで確認済み。
 
-- ラズパイのSSH接続先・機種/OSを確認して配備。
-- PiのネットワークからMyDNSの初回更新。A/AAAAと実際の公開先を確認。
+- systemdへの永続サービス登録と既存Caddyへの反映（sudo認証が必要）。
 - ルーター80/443、Caddy証明書、Pages→公開WSSで2人/10人対戦を確認。
-- Pi上のCPU/メモリ/帯域・実際の操作感と物理パッドを確認。
+- WSSとSQLiteを含む実運用時の負荷・操作感、物理パッドを確認。
 - 原作実機のMini/0-line/PC/B2B/REN例外、ガベージ穴・遅延、正式操作設定との照合。
 
 Phase 6の公開WSS・実機条件は上記が完了するまで合格扱いにしない。
