@@ -57,7 +57,7 @@ test('mock Gamepad API supports hold, menu and disconnect release', async ({ pag
     Object.defineProperty(navigator, 'getGamepads', { value: () => (pad.connected ? [pad] : [null]) });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: /02 \/ TIME ATTACK/ }).click();
+  await page.getByRole('button', { name: /40 LINES タイムアタック/ }).click();
   const press = async (i: number) => {
     await page.evaluate((index) => {
       (window as unknown as { testPad: { buttons: { pressed: boolean }[] } }).testPad.buttons[index].pressed =

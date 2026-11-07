@@ -28,6 +28,7 @@ export interface GarbagePacket {
   status: 'pending' | 'active';
 }
 export type Spin = 'none' | 'mini' | 'full';
+export type TopoutReason = 'block-out' | 'lock-out' | 'garbage-out';
 export interface Stats {
   placements: number;
   linesCleared: number;
@@ -46,6 +47,7 @@ export interface GameState {
   holdUsed: boolean;
   tick: number;
   alive: boolean;
+  topoutReason?: TopoutReason;
   gravity: number;
   grounded: number;
   resets: number;
@@ -114,6 +116,7 @@ function spawn(s: GameState, r: Rules, kind?: Piece) {
   fillQueue(s, r);
   if (!fits(s, s.active, r)) {
     s.alive = false;
+    s.topoutReason = 'block-out';
     s.active = null;
   }
 }
@@ -298,6 +301,7 @@ function lock(s: GameState, r: Rules, events: GameEvent[]) {
   s.holdUsed = false;
   if (overflow || (lockedCells.every(([, y]) => y < r.hiddenHeight) && lines === 0)) {
     s.alive = false;
+    s.topoutReason = overflow ? 'garbage-out' : 'lock-out';
     events.push({ type: 'topout' });
     return;
   }

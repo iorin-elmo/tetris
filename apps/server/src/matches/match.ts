@@ -63,8 +63,9 @@ export class Match {
   ) {
     this.rules = structuredClone(rules);
     this.startAt = startAt;
+    const sharedSeed = randomBytes(4).readUInt32LE();
     this.players = members.map((m) => {
-      const seed = randomBytes(4).readUInt32LE();
+      const seed = this.rules.sharedSequence ? sharedSeed : randomBytes(4).readUInt32LE();
       this.seeds[m.id] = seed;
       const playerRules = { ...this.rules, ...inputTiming(rules, m.dasMs, m.arrMs) };
       return {

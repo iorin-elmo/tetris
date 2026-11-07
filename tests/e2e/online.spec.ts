@@ -16,10 +16,23 @@ test('two browsers: invite, authoritative battle, reload resume, result and rema
     await guest.getByLabel('ゲスト名').fill('GUEST');
     await guest.getByRole('button', { name: /コードで参加する/ }).click();
     await expect(page.locator('.member-row')).toHaveCount(2);
+    await page.getByLabel('配牌', { exact: true }).selectOption('shared');
+    await page.getByRole('button', { name: /ルールを保存/ }).click();
+    await expect(guest.getByLabel('配牌', { exact: true })).toHaveValue('shared');
     await expect(guest.getByRole('button', { name: /対戦をはじめる/ })).toBeDisabled();
     await page.getByRole('button', { name: /対戦をはじめる/ }).click();
     await expect(page.getByRole('heading', { name: 'FREE FOR ALL' })).toBeVisible({ timeout: 10000 });
     await expect(guest.getByRole('heading', { name: 'FREE FOR ALL' })).toBeVisible();
+    await expect(page.locator('.next-list .mini-piece')).toHaveCount(5);
+    expect(
+      await page
+        .locator('.next-list .mini-piece')
+        .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label'))),
+    ).toEqual(
+      await guest
+        .locator('.next-list .mini-piece')
+        .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label'))),
+    );
     await page.keyboard.press('KeyC');
     await expect(page.locator('.hold-rail .mini-piece i')).toHaveCount(4);
     await page.waitForTimeout(400);

@@ -5,6 +5,7 @@ import {
   checksum,
   type GameState,
   type Input,
+  type LockEvent,
 } from '../../../../packages/engine/src/index';
 import {
   PROTOCOL_VERSION,
@@ -19,6 +20,7 @@ import type { Controller } from '../input/controller';
 import type { Preferences } from '../settings/store';
 import type { GameResult } from '../game/useLocalGame';
 import { sound } from '../game/audio';
+import type { ClearFeedback } from '../game/feedback';
 interface OnlineGame {
   matchId: string;
   state: GameState;
@@ -28,6 +30,7 @@ interface OnlineGame {
   result: GameResult | null;
   menu: boolean;
   message: string;
+  feedback?: ClearFeedback;
   target: string | null;
   spectator: boolean;
   startAt: number;
@@ -139,6 +142,7 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       result: reset ? null : (existing?.result ?? null),
       menu: existing?.menu ?? false,
       message: existing?.message ?? '',
+      feedback: reset ? undefined : existing?.feedback,
       target: frame.players.find((p) => p.id === model.current.id)?.target ?? null,
       spectator: !self,
       startAt: frame.startAt,
@@ -241,19 +245,15 @@ export function useOnline(controller: Controller, prefs: Preferences) {
           send('state.checksum', { matchId: m.matchId, tick: m.self.tick, hash: checksum(m.self) });
       } else if (m.type === 'match.event') {
         const game = model.current.game;
-        if (game && m.kind === 'lock' && m.payload.playerId === model.current.id) {
+        if (
+          game &&
+          game.matchId === m.matchId &&
+          m.kind === 'lock' &&
+          m.payload.playerId === model.current.id
+        ) {
           const e = m.payload;
-          game.message = e.perfectClear
-            ? 'PERFECT CLEAR'
-            : e.spin === 'full'
-              ? `T-SPIN ${e.lines} LINES`
-              : e.lines === 4
-                ? 'TETRIS'
-                : Number(e.ren) > 0
-                  ? `${e.ren} REN`
-                  : e.lines
-                    ? `${e.lines} LINE CLEAR`
-                    : '';
+          if (e.lines || e.spin !== 'none')
+            game.feedback = { event: e as unknown as LockEvent, tick: m.tick };
           sound(Number(e.lines) > 0 ? 'clear' : 'lock', preferences.current.volume);
         }
       } else if (m.type === 'match.end') {

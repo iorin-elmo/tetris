@@ -19,6 +19,7 @@ import { PROJECT_DEFAULT, type Rules } from '../../../../packages/rulesets/src/i
 import { Controller } from '../input/controller';
 import { saveBest, type Preferences } from '../settings/store';
 import { sound } from './audio';
+import type { ClearFeedback } from './feedback';
 export type SoloMode = 'marathon' | 'sprint' | 'cpu';
 export interface Standing {
   id: string;
@@ -41,6 +42,7 @@ export interface LocalView {
   paused: boolean;
   result: GameResult | null;
   message: string;
+  feedback?: ClearFeedback;
   target: string | null;
   rules: Rules;
   seed: number;
@@ -218,17 +220,7 @@ export function useLocalGame(controller: Controller, prefs: Preferences) {
           }
           for (const e of next.events) {
             if (e.type === 'lock') {
-              v.message = e.perfectClear
-                ? 'PERFECT CLEAR'
-                : e.spin === 'full'
-                  ? `T-SPIN ${e.lines ? ['', 'SINGLE', 'DOUBLE', 'TRIPLE'][e.lines] : ''}`
-                  : e.lines === 4
-                    ? 'TETRIS'
-                    : e.ren > 0
-                      ? `${e.ren} REN`
-                      : e.lines
-                        ? `${e.lines} LINE CLEAR`
-                        : '';
+              if (e.lines || e.spin !== 'none') v.feedback = { event: e, tick: v.state.tick };
               sound(e.lines ? 'clear' : 'lock', preferences.current.volume);
             }
             if (e.type === 'hold') sound('hold', preferences.current.volume);
@@ -242,7 +234,7 @@ export function useLocalGame(controller: Controller, prefs: Preferences) {
           if (v.mode !== 'cpu' && (!v.state.alive || complete)) {
             const stats = statistics(v.state);
             v.result = {
-              title: complete ? 'CLEAR!' : 'おつかれさま。',
+              title: complete ? 'CLEAR!' : 'GAME OVER',
               success: complete,
               standings: [{ id: 'me', name: 'YOU', team: 0, place: 1, ko: 0, stats }],
             };

@@ -41,6 +41,7 @@ export const rulesSchema = z
     visibleHeight: int(16, 30).default(20),
     hiddenHeight: int(4, 30).default(20),
     nextCount: int(1, 10).default(5),
+    sharedSequence: z.boolean().default(false),
     holdEnabled: z.boolean().default(true),
     forceGhost: z.boolean().default(false),
     gravityTicks: int(1, 3600).default(60),

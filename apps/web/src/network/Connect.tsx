@@ -39,14 +39,12 @@ export function Connect({
       <div className="modal compact">
         <div className="modal-heading">
           <div>
-            <span className="eyebrow">LET'S PLAY TOGETHER</span>
             <h2>オンラインで遊ぶ</h2>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="接続画面を閉じる">
             ×
           </button>
         </div>
-        <p>部屋を作って仲間を招待するか、招待コードで参加できます。</p>
         <label>
           ゲスト名
           <input

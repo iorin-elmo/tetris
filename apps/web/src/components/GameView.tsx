@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import { Board, MiniPiece } from '../canvas/Board';
 import { statistics, type GameState } from '../../../../packages/engine/src/index';
 import type { Rules } from '../../../../packages/rulesets/src/index';
 import type { Preferences } from '../settings/store';
 import type { GameResult } from '../game/useLocalGame';
+import { clearLabels, topoutLabels, warningLabels, type ClearFeedback } from '../game/feedback';
+import { placementWarning } from '../game/danger';
 export const formatTime = (seconds: number) =>
   `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;
 export function GameView({
@@ -13,13 +16,12 @@ export function GameView({
   opponents = [],
   paused = false,
   result,
-  message,
+  feedback,
   target,
   onTarget,
   onPause,
   onBack,
   onRetry,
-  seed,
   online = false,
   spectator = false,
 }: {
@@ -38,6 +40,7 @@ export function GameView({
   paused?: boolean;
   result: GameResult | null;
   message: string;
+  feedback?: ClearFeedback;
   target: string | null;
   onTarget?: (id: string) => void;
   onPause: () => void;
@@ -49,11 +52,13 @@ export function GameView({
 }) {
   const stats = statistics(state),
     goal = mode === 'sprint' ? 40 : mode === 'marathon' && !prefs.endless ? 150 : 0;
+  const warning = useMemo(() => placementWarning(state, rules), [state, rules]);
+  const clear = feedback && state.tick - feedback.tick < 150 ? clearLabels(feedback.event) : null;
+  const ren = Math.max(0, state.streak - 1);
   return (
     <main className="game-page">
       <div className="game-toolbar">
         <div>
-          <span className="eyebrow">{online ? 'ONLINE ROOM' : 'SOLO SESSION'}</span>
           <h1>
             {mode === 'sprint'
               ? '40 LINES'
@@ -67,10 +72,6 @@ export function GameView({
           </h1>
         </div>
         <div className="toolbar-actions">
-          <span className="tag">
-            <i className="dot" />
-            {online ? 'LIVE' : 'LOCAL'}
-          </span>
           <button className="button secondary" onClick={onPause}>
             {online ? 'メニュー' : '一時停止'} <kbd>ESC</kbd>
           </button>
@@ -85,14 +86,39 @@ export function GameView({
               <MiniPiece piece={state.hold} />
             </div>
             <span className="key-hint">{prefs.keyboard.hold.replace('Key', '')}</span>
-            <div className="rail-spacer" />
-            <div className="rail-metric">
-              <span>LEVEL</span>
-              <strong>{Math.floor(stats.linesCleared / 10) + 1}</strong>
-            </div>
             <div className="rail-metric">
               <span>PPS</span>
               <strong>{stats.pps.toFixed(2)}</strong>
+            </div>
+            <div
+              className={`chain-display ${state.b2b ? 'active' : ''}`}
+              aria-label={`B2B ${state.b2b ? '継続中' : 'なし'}`}
+            >
+              <span>B2B</span>
+              <strong>{state.b2b ? 'ON' : '—'}</strong>
+            </div>
+            <div className={`ren-display ${ren > 0 ? 'active' : ''}`} aria-label={`${ren} REN`}>
+              <strong>{ren > 0 ? ren : '—'}</strong>
+              <span>REN</span>
+            </div>
+            <div className="clear-announcement" role="status" aria-live="polite" aria-atomic="true">
+              {clear && (
+                <div key={feedback!.tick} className="clear-event">
+                  {clear.b2b && <span className="clear-b2b">BACK-TO-BACK</span>}
+                  {clear.spin && <strong className="clear-spin">{clear.spin}</strong>}
+                  {clear.clear && (
+                    <strong className={`clear-type ${feedback!.event.lines === 4 ? 'four-lines' : ''}`}>
+                      {clear.clear}
+                    </strong>
+                  )}
+                  {clear.perfect && <strong className="clear-perfect">PERFECT CLEAR</strong>}
+                  {clear.attack > 0 && (
+                    <span className="clear-attack">
+                      +{clear.attack} <small>ATTACK</small>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </aside>
           <div className="field-wrap">
@@ -100,12 +126,12 @@ export function GameView({
               <span>
                 <i className="dot" /> {spectator ? 'SPECTATING' : 'YOU'}
               </span>
-              <span>
-                {rules.fieldWidth} × {rules.visibleHeight}
-              </span>
+              <span>{!state.alive ? 'KO' : warning.reason ? 'DANGER' : ''}</span>
             </div>
-            <div className="field">
-              <Board state={state} rules={rules} prefs={prefs} />
+            <div
+              className={`field ${warning.reason ? 'fatal-placement' : warning.nearTop ? 'near-top' : ''}`}
+            >
+              <Board state={state} rules={rules} prefs={prefs} warning={warning} />
               <div className="garbage-gauge" title="受信待ちガベージ">
                 <i
                   style={{
@@ -114,9 +140,16 @@ export function GameView({
                 />
               </div>
             </div>
-            <div className="field-bottom">
-              <span>{message || 'MAKE YOUR NEXT MOVE.'}</span>
-              <span>{stats.attackSent} ↑</span>
+            <div className={`field-bottom ${warning.reason ? 'danger-text' : ''}`} role="status">
+              <span>
+                {!state.alive && state.topoutReason
+                  ? topoutLabels[state.topoutReason]
+                  : warning.reason
+                    ? warningLabels[warning.reason]
+                    : warning.nearTop
+                      ? '赤枠：次のミノの出現位置'
+                      : ''}
+              </span>
             </div>
           </div>
           <aside className="next-rail">
@@ -193,22 +226,7 @@ export function GameView({
                 ))}
               </div>
             </>
-          ) : (
-            <div className="play-note">
-              <span>ONE PIECE AT A TIME.</span>
-              <p>
-                焦らず、自分のリズムで。
-                <br />
-                次の一手を楽しもう。
-              </p>
-              <div className="little-blocks">
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
-          )}
+          ) : null}
         </aside>
       </div>
       <div className="controls-bar">
@@ -229,16 +247,15 @@ export function GameView({
         <span>
           <kbd>{prefs.keyboard.hold.replace('Key', '')}</kbd> HOLD
         </span>
-        <span className="controls-note">{online ? 'Q / E で照準切替' : `SEED ${seed ?? '—'}`}</span>
+        {online && <span className="controls-note">Q / E ターゲット切替</span>}
       </div>
       {paused && !result && (
         <div className="overlay">
           <div className="modal compact">
-            <span className="eyebrow">TAKE A BREATH</span>
             <h2>{online ? 'メニュー' : 'PAUSED'}</h2>
             {online && <p>オンライン対戦はメニュー表示中も進行します。</p>}
             <button className="button primary wide" onClick={onPause}>
-              ゲームに戻る →
+              ゲームに戻る
             </button>
             <button className="button secondary wide" onClick={onBack}>
               {online ? '部屋から退出する' : 'ホームに戻る'}
@@ -249,8 +266,10 @@ export function GameView({
       {result && (
         <div className="overlay">
           <div className="modal results-modal">
-            <span className="eyebrow">SESSION COMPLETE</span>
             <h2>{result.title}</h2>
+            {!state.alive && state.topoutReason && (
+              <p className="defeat-reason">{topoutLabels[state.topoutReason]}</p>
+            )}
             <div className="result-stats">
               <div>
                 <span>TIME</span>

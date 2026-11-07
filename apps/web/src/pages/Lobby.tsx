@@ -121,7 +121,6 @@ export function Lobby({
     <main className="lobby-page">
       <div className="game-toolbar">
         <div>
-          <span className="eyebrow">YOUR PRIVATE PLAYGROUND</span>
           <h1>ROOM LOBBY</h1>
         </div>
         <div className="toolbar-actions">
@@ -403,6 +402,17 @@ export function Lobby({
                     </div>
                   ))}
                 {check('holdEnabled', 'HOLDを有効にする')}
+                <label>
+                  配牌
+                  <select
+                    aria-label="配牌"
+                    value={draft.sharedSequence ? 'shared' : 'individual'}
+                    onChange={(e) => setDraft({ ...draft, sharedSequence: e.target.value === 'shared' })}
+                  >
+                    <option value="shared">全員共通</option>
+                    <option value="individual">プレイヤー別</option>
+                  </select>
+                </label>
                 {check('forceGhost', 'ゴーストを全員に表示')}
                 {check('requireReady', '開始に全員のREADYを必要とする')}
                 {check('allowSpectators', '観戦を許可')}
@@ -411,9 +421,7 @@ export function Lobby({
             )}
             {tab === 'attack' && (
               <>
-                <p className="muted">
-                  初期値はPPT2テトリス同士の火力表を参照。Mini・PCの例外はPROJECT_DEFAULTです。
-                </p>
+                <p className="muted">火力は送信するおじゃまのライン数です。</p>
                 <div className="form-columns">
                   {Object.entries(draft.attackRules)
                     .filter(([, v]) => typeof v === 'number')

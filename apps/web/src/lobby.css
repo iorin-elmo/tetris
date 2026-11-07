@@ -26,9 +26,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #1a202a;
+  background: #1b1a22;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 25px 30px;
   margin-bottom: 28px;
 }
@@ -65,9 +65,9 @@
 .members-panel,
 .rules-panel {
   padding: 25px;
-  background: #181e29;
+  background: #19181f;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
 }
 .panel-heading {
   display: flex;
@@ -102,7 +102,7 @@
   height: 35px;
   border: 1px solid #ffffff20;
   background: #262e3c;
-  border-radius: 8px;
+  border-radius: 0;
   font: 14px monospace;
   flex-shrink: 0;
 }
@@ -116,7 +116,7 @@
   color: #efb878 !important;
 }
 .team-color-3 {
-  color: #c2f970 !important;
+  color: #bca4ff !important;
 }
 .member-info {
   min-width: 0;
@@ -247,7 +247,7 @@
 .team-summary > div {
   background: #ffffff04;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 9px;
 }
 .team-summary span {
@@ -264,10 +264,10 @@
   color: var(--muted);
 }
 .balance-preview {
-  background: #c2f97007;
-  border: 1px solid #c2f97025;
+  background: #bca4ff07;
+  border: 1px solid #bca4ff25;
   padding: 18px;
-  border-radius: 8px;
+  border-radius: 0;
   margin-bottom: 25px;
 }
 .balance-preview p {
@@ -314,8 +314,8 @@
   padding: 15px 25px;
   background: #39412c;
   color: var(--lime);
-  border: 1px solid #c2f97055;
-  border-radius: 8px;
+  border: 1px solid #bca4ff55;
+  border-radius: 0;
   font-size: 12px;
   box-shadow: 0 10px 30px #0005;
 }

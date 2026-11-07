@@ -160,9 +160,7 @@ export function Settings({
               ))}
             </div>
             {warning && <p className="notice">{warning}</p>}
-            <p className="muted">
-              スティックも割当できます。キーボードの割当待ちは Escape で中止。初期配列は PROJECT_DEFAULT。
-            </p>
+            <p className="muted">スティックも割当できます。キーボードの割当待ちは Escape で中止。</p>
           </>
         )}
         {tab === 'display' && (
