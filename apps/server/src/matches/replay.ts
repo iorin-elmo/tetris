@@ -7,6 +7,7 @@ export interface ReplayEntry {
     | { kind: 'input'; frames: { tick: number; seq: number; input: Input }[] }
     | { kind: 'target'; targetId: string }
     | { kind: 'disconnect' }
+    | { kind: 'input.reset' }
     | { kind: 'forfeit' };
 }
 export function replayMatch(archive: MatchArchive, entries: ReplayEntry[], endTick: number) {
@@ -25,6 +26,7 @@ export function replayMatch(archive: MatchArchive, entries: ReplayEntry[], endTi
           player.target = entry.data.targetId;
           break;
         case 'disconnect':
+        case 'input.reset':
           match.release(player.id);
           break;
         case 'forfeit':

@@ -1,12 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  createGame,
-  step,
-  checksum,
-  type GameState,
-  type Input,
-  type LockEvent,
-} from '../../../../packages/engine/src/index';
+import { createGame, checksum, type GameState, type LockEvent } from '../../../../packages/engine/src/index';
 import {
   PROTOCOL_VERSION,
   type RoomSnapshot,
@@ -21,6 +14,7 @@ import type { Preferences } from '../settings/store';
 import type { GameResult } from '../game/useLocalGame';
 import { sound } from '../game/audio';
 import type { ClearFeedback } from '../game/feedback';
+import { Prediction, MAX_PREDICTION_TICKS } from './prediction';
 interface OnlineGame {
   matchId: string;
   state: GameState;
@@ -34,11 +28,6 @@ interface OnlineGame {
   target: string | null;
   spectator: boolean;
   startAt: number;
-}
-interface Frame {
-  tick: number;
-  seq: number;
-  input: Input;
 }
 export interface OnlineState {
   status: 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
@@ -83,9 +72,9 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       >(),
     );
   const lifecycleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputs = useRef<Frame[]>([]),
-    outbound = useRef<Frame[]>([]),
-    nextSeq = useRef(0),
+  const prediction = useRef(new Prediction()),
+    recovering = useRef<string | null>(null),
+    recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     timelineTick = useRef(0),
     offset = useRef(0),
     restart = useRef(false),
@@ -116,20 +105,20 @@ export function useOnline(controller: Controller, prefs: Preferences) {
     const self = frame.self,
       existing = model.current.game,
       reset = initial || restart.current || existing?.matchId !== frame.matchId;
-    if (reset) {
-      inputs.current = [];
-      outbound.current = [];
-      nextSeq.current = frame.ackSeq + 1;
-      timelineTick.current = Math.max(
-        frame.tick,
-        Math.floor(((Date.now() + offset.current - frame.startAt) * 60) / 1000),
-      );
-      restart.current = false;
-    }
-    inputs.current = inputs.current.filter((f) => f.seq > frame.ackSeq);
-    let state = self;
-    if (state)
-      for (const f of inputs.current) state = step(state, f.input, frame.selfRules ?? frame.rules).state;
+    if (existing && !initial && existing.matchId !== frame.matchId) return;
+    if (existing?.result && !reset) return;
+    // A suspended tab may still contain unsent frames. Do not mix those old
+    // sequence numbers into the first live batch after a large clock jump.
+    if (!reset && self?.alive && frame.tick - timelineTick.current > MAX_PREDICTION_TICKS) recoverInputs();
+    const wall = Math.floor(((Date.now() + offset.current - frame.startAt) * 60) / 1000);
+    const delay = (frame.selfRules ?? frame.rules).inputDelayTicks;
+    const target = reset
+      ? Math.max(frame.tick, Math.min(wall, frame.tick + MAX_PREDICTION_TICKS - delay))
+      : Math.max(frame.tick, timelineTick.current);
+    if (!prediction.current.reconcile(frame, target + delay, reset)) return;
+    timelineTick.current = target;
+    restart.current = false;
+    let state = prediction.current.state;
     const watched = frame.players.find((p) => p.state.alive) ?? frame.players[0];
     if (!state && watched) state = asGame(watched, frame.rules);
     if (!state) return;
@@ -148,6 +137,20 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       startAt: frame.startAt,
     };
     model.current.countdown = null;
+  };
+  const recoverInputs = () => {
+    const game = model.current.game;
+    if (!game || game.result || game.spectator || !prediction.current.alive || recovering.current) return;
+    prediction.current.clear();
+    controller.reset();
+    model.current.error = '';
+    recovering.current = send('input.resync', { matchId: game.matchId });
+    recoveryTimer.current = setTimeout(() => socket.current?.close(), 3000);
+  };
+  const clearRecovery = () => {
+    recovering.current = null;
+    if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    recoveryTimer.current = null;
   };
   const connect = (): Promise<void> => {
     if (socket.current?.readyState === WebSocket.OPEN && model.current.status === 'connected')
@@ -183,6 +186,7 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       });
     };
     ws.onmessage = (event) => {
+      if (socket.current !== ws) return;
       let m: ServerMessage;
       try {
         m = JSON.parse(event.data);
@@ -219,7 +223,11 @@ export function useOnline(controller: Controller, prefs: Preferences) {
           p.reject(new Error(m.message));
           pendingRequests.current.delete(m.requestId);
         }
-        if (m.code === 'INVALID_TOKEN') {
+        if (['INPUT_SEQUENCE', 'INPUT_TICK', 'INPUT_OVERFLOW'].includes(m.code)) {
+          recoverInputs();
+        } else if (m.requestId === recovering.current) {
+          ws.close();
+        } else if (m.code === 'INVALID_TOKEN') {
           localStorage.removeItem(`stacklane.token:${url}`);
           ws.close();
         } else if (m.code === 'KICKED') {
@@ -229,6 +237,13 @@ export function useOnline(controller: Controller, prefs: Preferences) {
           desired.current = false;
         } else if (!['NO_MATCH', 'STALE_MATCH', 'SPECTATOR'].includes(m.code))
           model.current.error = m.message;
+      } else if (m.type === 'input.resynced') {
+        if (m.requestId === recovering.current && m.matchId === model.current.game?.matchId) {
+          clearRecovery();
+          controller.reset();
+          offset.current = m.startAt + (m.tick * 1000) / 60 + model.current.latency / 2 - Date.now();
+          reconcile(m, true);
+        }
       } else if (m.type === 'room.snapshot') {
         if (m.room.status === 'lobby' && restart.current) model.current.game = null;
         model.current.room = m.room;
@@ -236,8 +251,8 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       } else if (m.type === 'match.prepare') {
         model.current.countdown = m.startAt;
         model.current.game = null;
-        inputs.current = [];
-        outbound.current = [];
+        prediction.current = new Prediction();
+        clearRecovery();
         controller.reset();
       } else if (m.type === 'match.start' || m.type === 'match.snapshot' || m.type === 'state.resync') {
         reconcile(m, m.type === 'match.start');
@@ -245,6 +260,17 @@ export function useOnline(controller: Controller, prefs: Preferences) {
           send('state.checksum', { matchId: m.matchId, tick: m.self.tick, hash: checksum(m.self) });
       } else if (m.type === 'match.event') {
         const game = model.current.game;
+        if (
+          game &&
+          game.matchId === m.matchId &&
+          !game.result &&
+          m.kind === 'ko' &&
+          m.payload.playerId === model.current.id
+        ) {
+          prediction.current.confirmKO(m.tick);
+          if (prediction.current.state) game.state = prediction.current.state;
+          controller.reset();
+        }
         if (
           game &&
           game.matchId === m.matchId &&
@@ -269,8 +295,8 @@ export function useOnline(controller: Controller, prefs: Preferences) {
             success,
             standings: m.placement,
           };
-          inputs.current = [];
-          outbound.current = [];
+          prediction.current.clear();
+          clearRecovery();
           sound('end', preferences.current.volume);
         }
       } else if (m.type === 'pong') {
@@ -296,8 +322,8 @@ export function useOnline(controller: Controller, prefs: Preferences) {
         p.reject(new Error('接続が切れました。'));
       }
       pendingRequests.current.clear();
-      inputs.current = [];
-      outbound.current = [];
+      prediction.current.clear();
+      clearRecovery();
       restart.current = true;
       if (event.code === 4001) {
         desired.current = false;
@@ -321,8 +347,15 @@ export function useOnline(controller: Controller, prefs: Preferences) {
     return connectPromise.current;
   };
   const flush = () => {
-    if (outbound.current.length && socket.current?.readyState === WebSocket.OPEN) {
-      send('input.batch', { matchId: model.current.game?.matchId, frames: outbound.current.splice(0, 12) });
+    if (
+      !recovering.current &&
+      prediction.current.outbound.length &&
+      socket.current?.readyState === WebSocket.OPEN
+    ) {
+      send('input.batch', {
+        matchId: model.current.game?.matchId,
+        frames: prediction.current.outbound.splice(0, 12),
+      });
     }
   };
   const target = (id: string) => {
@@ -338,7 +371,10 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       const game = model.current.game;
       if (game && !game.result && model.current.status === 'connected') {
         const wall = Math.floor(((Date.now() + offset.current - game.startAt) * 60) / 1000);
-        for (let n = 0; timelineTick.current < wall && n < 6; n++) {
+        if (wall - timelineTick.current > 120) recoverInputs();
+        const limit =
+          (prediction.current.frame?.tick ?? wall) + MAX_PREDICTION_TICKS - game.selfRules.inputDelayTicks;
+        for (let n = 0; timelineTick.current < Math.min(wall, limit) && n < 6; n++) {
           timelineTick.current++;
           const read = controller.poll();
           if (read.menu) {
@@ -358,13 +394,12 @@ export function useOnline(controller: Controller, prefs: Preferences) {
               target(enemies[(i + read.target + enemies.length) % enemies.length].id);
             }
           }
-          if (!game.spectator && game.state.alive) {
-            const input = game.menu ? {} : read.input,
-              f = { tick: timelineTick.current + game.rules.inputDelayTicks, seq: nextSeq.current++, input };
-            game.state = step(game.state, input, game.selfRules).state;
-            inputs.current.push(f);
-            outbound.current.push(f);
-            if (outbound.current.length >= 3 || input.hard || input.hold || input.cw || input.ccw) flush();
+          if (!game.spectator && prediction.current.alive && !recovering.current) {
+            const input = game.menu ? {} : read.input;
+            prediction.current.queue(timelineTick.current + game.rules.inputDelayTicks, input);
+            if (prediction.current.state) game.state = prediction.current.state;
+            if (prediction.current.outbound.length >= 3 || input.hard || input.hold || input.cw || input.ccw)
+              flush();
           }
         }
         update();
@@ -378,21 +413,35 @@ export function useOnline(controller: Controller, prefs: Preferences) {
     const release = () => {
       const game = model.current.game;
       controller.reset();
-      if (!game || game.result || game.spectator || !game.state.alive || model.current.status !== 'connected')
+      if (
+        !game ||
+        game.result ||
+        game.spectator ||
+        !prediction.current.alive ||
+        recovering.current ||
+        model.current.status !== 'connected'
+      )
         return;
-      timelineTick.current =
+      const limit =
+        (prediction.current.frame?.tick ?? timelineTick.current) +
+        MAX_PREDICTION_TICKS -
+        game.selfRules.inputDelayTicks;
+      if (
+        Math.floor(((Date.now() + offset.current - game.startAt) * 60) / 1000) - timelineTick.current >
+        120
+      ) {
+        recoverInputs();
+        return;
+      }
+      timelineTick.current = Math.min(
+        limit,
         Math.max(
           timelineTick.current,
           Math.floor(((Date.now() + offset.current - game.startAt) * 60) / 1000),
-        ) + 1;
-      const frame = {
-        tick: timelineTick.current + game.rules.inputDelayTicks,
-        seq: nextSeq.current++,
-        input: {},
-      };
-      game.state = step(game.state, {}, game.selfRules).state;
-      inputs.current.push(frame);
-      outbound.current.push(frame);
+        ) + 1,
+      );
+      prediction.current.queue(timelineTick.current + game.rules.inputDelayTicks, {});
+      if (prediction.current.state) game.state = prediction.current.state;
       flush();
     };
     window.addEventListener('blur', release);
@@ -411,6 +460,7 @@ export function useOnline(controller: Controller, prefs: Preferences) {
       lifecycleTimer.current = setTimeout(() => {
         desired.current = false;
         if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+        clearRecovery();
         socket.current?.close();
       }, 0);
     };

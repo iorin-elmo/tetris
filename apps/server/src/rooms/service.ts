@@ -146,6 +146,19 @@ export class RoomService {
           };
           this.sessions.set(session.id, session);
         }
+        // A replacement socket can arrive before the old socket's close event.
+        // Reset here as well, before the new client restarts its input sequence.
+        const resumedRoom = session.room ? this.rooms.get(session.room) : undefined;
+        if (
+          message.resumeToken &&
+          resumedRoom?.match &&
+          ['playing', 'countdown'].includes(resumedRoom.status)
+        ) {
+          resumedRoom.match.release(session.id);
+          this.store.recordInputs(resumedRoom.match.id, resumedRoom.match.tick, session.id, {
+            kind: 'input.reset',
+          });
+        }
         session.socket?.close(4001, 'Session resumed');
         session.socket = socket;
         session.disconnectedAt = null;
@@ -509,6 +522,19 @@ export class RoomService {
     const match = room.match;
     assert(match && room.status === 'playing', 'NO_MATCH', '進行中の試合がありません。');
     const player = match.players.find((p) => p.id === session.id);
+    if (m.type === 'input.resync') {
+      assert(m.matchId === match.id, 'STALE_MATCH', '試合が切り替わっています。');
+      assert(player, 'SPECTATOR', '観戦中は入力を同期できません。');
+      assert(this.limits.take(`resync:${session.id}`, 2, 4), 'RATE_LIMIT', '同期を再試行しています。');
+      match.release(session.id);
+      this.store.recordInputs(match.id, match.tick, session.id, { kind: 'input.reset' });
+      this.send(session.socket, {
+        type: 'input.resynced',
+        requestId: m.requestId,
+        ...match.frame(session.id),
+      });
+      return;
+    }
     if (m.type === 'target.select') {
       assert(player && player.state.alive, 'SPECTATOR', '観戦中は照準を変更できません。');
       const target = match.players.find((p) => p.id === m.targetId);

@@ -23,6 +23,10 @@ it('replays private seeds, inputs, targeting and a disconnect to the identical c
       match.release('a');
       entries.push({ tick: match.tick, playerId: 'a', data: { kind: 'disconnect' } });
     }
+    if (i === 120) {
+      match.release('b');
+      entries.push({ tick: match.tick, playerId: 'b', data: { kind: 'input.reset' } });
+    }
     match.advance();
   }
   const replay = replayMatch(archive, entries, match.tick);

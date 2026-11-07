@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { rulesSchema, type Rules } from '../../rulesets/src/index';
-import type { Active, GameState, Stats, statistics } from '../../engine/src/index';
+import type { Active, GameState, Input, Stats, statistics } from '../../engine/src/index';
 export const PROTOCOL_VERSION = 1;
 const id = z.string().min(1).max(100),
   integer = z.number().int().min(0).max(2147483647),
@@ -59,6 +59,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
       .min(1)
       .max(12),
   }),
+  message('input.resync', { matchId: id }),
   message('target.select', { targetId: id }),
   message('state.checksum', { matchId: id, tick: integer, hash: z.string().regex(/^[0-9a-f]{8}$/) }),
   message('ping', { clientTime: z.number().finite() }),
@@ -117,8 +118,16 @@ export interface MatchFrame {
   players: PlayerFrame[];
   self: GameState | null;
   ackSeq: number;
+  receivedSeq?: number;
+  pendingInputs?: InputFrame[];
+  heldInput?: Input;
   selfRules: Rules | null;
   startAt: number;
+}
+export interface InputFrame {
+  tick: number;
+  seq: number;
+  input: Input;
 }
 export interface Standing {
   id: string;
@@ -156,6 +165,7 @@ export type ServerMessage =
   | { [T in 'match.start' | 'match.snapshot' | 'state.resync']: { type: T } & MatchFrame }[
       'match.start' | 'match.snapshot' | 'state.resync']
   | { type: 'match.event'; matchId: string; tick: number; kind: string; payload: Record<string, unknown> }
+  | ({ type: 'input.resynced'; requestId: string } & MatchFrame)
   | {
       type: 'match.end';
       matchId: string;

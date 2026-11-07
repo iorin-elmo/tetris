@@ -102,6 +102,8 @@ it('rejects forged input claims and duplicate sequences; late joins spectate', a
   const late = await c.wait('room.snapshot');
   expect(late.room.members.find((p) => p.id === c.welcome.sessionId)?.spectator).toBe(true);
   expect((await c.wait('match.start')).self).toBeNull();
+  c.send('input.resync', { matchId: start.matchId });
+  expect((await c.wait('error')).code).toBe('SPECTATOR');
   const frame = { tick: start.tick + 1, seq: 0, input: { hard: true } };
   a.send('input.batch', {
     matchId: start.matchId,
@@ -123,6 +125,71 @@ it('rejects untrusted origins', async () => {
       socket.on('error', reject);
     }),
   ).rejects.toThrow();
+});
+it('recovers a rejected input batch transactionally without repeating old drops', async () => {
+  const { app, url } = await setup();
+  const a = await client(url),
+    b = await client(url);
+  a.send('room.create', { name: 'A' });
+  const { room } = await a.wait('room.snapshot');
+  b.send('room.join', { code: room.code, displayName: 'B' });
+  await b.wait('room.snapshot');
+  a.send('room.start');
+  const start = await a.wait('match.start');
+  a.send('input.batch', {
+    matchId: start.matchId,
+    frames: [{ seq: 0, tick: start.tick + 1000, input: { hard: true } }],
+  });
+  expect((await a.wait('error')).code).toBe('INPUT_TICK');
+  a.send('input.batch', {
+    matchId: start.matchId,
+    frames: [{ seq: 1, tick: start.tick + 1, input: { hard: true } }],
+  });
+  expect((await a.wait('error')).code).toBe('INPUT_SEQUENCE');
+  const requestId = a.send('input.resync', { matchId: start.matchId });
+  const reset = await a.wait('input.resynced');
+  expect(reset.requestId).toBe(requestId);
+  expect(reset.pendingInputs).toEqual([]);
+  expect(reset.heldInput).toEqual({});
+  const next = reset.receivedSeq! + 1;
+  a.send('input.batch', {
+    matchId: start.matchId,
+    frames: [{ seq: next, tick: reset.tick + 1, input: { hard: true } }],
+  });
+  const applied = await a.wait('match.snapshot', (m) => m.ackSeq === next);
+  expect(applied.self!.stats.placements).toBe(1);
+  expect(app.service.rooms.get(room.code)!.match!.players[0].lastSeq).toBe(next);
+});
+
+it('drops queued inputs when a replacement socket arrives before the old socket closes', async () => {
+  const { app, url } = await setup(30000);
+  const a = await client(url),
+    b = await client(url);
+  a.send('room.create', { name: 'A' });
+  const { room } = await a.wait('room.snapshot');
+  b.send('room.join', { code: room.code, displayName: 'B' });
+  await b.wait('room.snapshot');
+  a.send('room.start');
+  const start = await a.wait('match.start');
+  const id = a.send('input.batch', {
+    matchId: start.matchId,
+    frames: [{ seq: 0, tick: start.tick + 30, input: { hard: true } }],
+  });
+  await a.wait('ack', (m) => m.requestId === id);
+  expect(app.service.rooms.get(room.code)!.match!.players[0].queue).toHaveLength(1);
+  // Keep a.socket open to force the overlap that used to cause duplicate seq.
+  const replacement = await client(url, a.welcome.resumeToken);
+  const resumed = await replacement.wait('match.start');
+  expect(resumed.pendingInputs).toEqual([]);
+  expect(resumed.receivedSeq).toBe(resumed.ackSeq);
+  const next = resumed.receivedSeq! + 1;
+  replacement.send('input.batch', {
+    matchId: start.matchId,
+    frames: [{ seq: next, tick: resumed.tick + 1, input: { hold: true } }],
+  });
+  const applied = await replacement.wait('match.snapshot', (m) => m.ackSeq === next);
+  expect(applied.self!.hold).not.toBeNull();
+  expect(applied.self!.stats.placements).toBe(0);
 });
 it('delivers the final result when a disconnected player resumes after the match ends', async () => {
   const { app, url } = await setup(30000);

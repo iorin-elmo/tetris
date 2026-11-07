@@ -282,6 +282,9 @@ export class Match {
       self: self?.state ?? null,
       selfRules: self?.rules ?? null,
       ackSeq: self?.ackSeq ?? -1,
+      receivedSeq: self?.lastSeq ?? -1,
+      pendingInputs: self ? structuredClone(self.queue) : [],
+      heldInput: self ? { ...self.held } : {},
     };
   }
   standings(): Standing[] {
